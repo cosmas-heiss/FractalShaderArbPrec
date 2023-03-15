@@ -126,12 +126,18 @@ void do_iteration(inout float iter, inout bool z_real_sign, inout uint[n_ints] z
     uint[n_ints] z_imag_sq_num;
     uint[n_ints] z_real_x_z_imag_num;
 
+    float cur_rad_sq;
+
     for (int i=0; i<num_iter; i++) {
         mult(z_real_sq_sign, z_real_sq_num, z_real_sign, z_real_num, z_real_sign, z_real_num);
         mult(z_imag_sq_sign, z_imag_sq_num, z_imag_sign, z_imag_num, z_imag_sign, z_imag_num);
         mult(z_real_x_z_imag_sign, z_real_x_z_imag_num, z_real_sign, z_real_num, z_imag_sign, z_imag_num);
 
-        if (float(z_real_sq_num[0]) + float(z_real_sq_num[1]) * 0.00001525878 + float(z_imag_sq_num[0]) + float(z_imag_sq_num[1]) * 0.00001525878 > 200) {
+        cur_rad_sq = float(z_real_sq_num[0]) + float(z_real_sq_num[1]) * 0.00001525878 + float(z_imag_sq_num[0]) + float(z_imag_sq_num[1]) * 0.00001525878;
+        if (cur_rad_sq > 250.0) {
+            if (i > 0) {
+                iter += 1.0 - 1.44 * log(log(cur_rad_sq) / log(250.0)); //3.32192809489 = 1 / log(2) // 1.44 found empirically...
+            }
             break;
         }
 
@@ -147,7 +153,7 @@ void do_iteration(inout float iter, inout bool z_real_sign, inout uint[n_ints] z
         add(z_real_sign, z_real_num, c_real_sign, c_real_num);
         add(z_imag_sign, z_imag_num, c_imag_sign, c_imag_num);
 
-        iter += 1;
+        iter += 1.0;
     }
 }
 
