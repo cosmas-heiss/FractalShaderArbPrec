@@ -20,10 +20,13 @@ uniform int mode;
 void double_to_uint_ar(inout bool a_sign, inout uint[n_ints] a_num, in double b) {
     a_sign = b < 0;
     b = abs(b);
+    double b2;
 
     uint c;
     for (int i=0; i<n_ints; i++) {
-        c = uint(b * pow(65536, i));
+        c = uint(b);
+        b -= double(c);
+        b *= 65536.0;
         c &= uint(65535);
 
         a_num[i] = c;
@@ -90,7 +93,7 @@ void main() {
 
     if (pixel_coords.x < image_size.x && pixel_coords.y < image_size.y) {
         int coord = pixel_coords.x * image_size.y + pixel_coords.y;
-        dvec2 offset = dvec2((pixel_coords.x + 0.5) / image_size.x - 0.5, (pixel_coords.y + 0.5) / image_size.y - 0.5) * scale;
+        dvec2 offset = dvec2((pixel_coords.x + 0.5) / image_size.x - 0.5, (pixel_coords.y + 0.5) / image_size.x - 0.5 * image_size.y / image_size.x) * scale;
 
         bool c_real_sign, c_imag_sign, center_real_sign, center_imag_sign;
         uint[n_ints] c_real_num, c_imag_num, center_real_num, center_imag_num;
