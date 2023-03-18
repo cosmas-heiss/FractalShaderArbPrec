@@ -197,7 +197,11 @@ class ShaderIterator():
 
         self.parameter_dict = {'mandelbrot_center': (Decimal(0), Decimal(0)),
                                'mandelbrot_x_scale': 4,
+                               'mandelbrot_rel_old_shift': (0.0, 0.0),
+                               'mandelbrot_rel_old_scale': 1.0,
                                'julia_center': (Decimal(0), Decimal(0)),
+                               'julia_rel_old_shift': (0.0, 0.0),
+                               'julia_rel_old_scale': 1.0,
                                'julia_x_scale': 4,
                                'julia_c' : (Decimal(0), Decimal(0.8)),
                                'mandelbrot_cur_max_iter': 0,
@@ -216,16 +220,27 @@ class ShaderIterator():
 
     def set_julia_c(self, c):
         self.parameter_dict['julia_c'] = c
+        self.parameter_dict['julia_rel_old_shift'] = (10000.0, 10000.0)
         self.reinit_julia_buffers()
 
 
     def set_mandelbrot_params(self, center, scale):
+        self.parameter_dict['mandelbrot_rel_old_scale'] *= scale / self.parameter_dict['mandelbrot_x_scale']
+        old_shift_x = float((center[0] - self.parameter_dict['mandelbrot_center'][0]) / Decimal(scale))
+        old_shift_y = float((center[1] - self.parameter_dict['mandelbrot_center'][1]) / Decimal(scale))
+        self.parameter_dict['mandelbrot_rel_old_shift'] = (self.parameter_dict['mandelbrot_rel_old_shift'][0] + old_shift_x,
+                                                           self.parameter_dict['mandelbrot_rel_old_shift'][1] + old_shift_y)
         self.parameter_dict['mandelbrot_center'] = center
         self.parameter_dict['mandelbrot_x_scale'] = scale
         self.reinit_mandelbrot_buffers()
 
 
     def set_julia_params(self, center, scale):
+        self.parameter_dict['julia_rel_old_scale'] *= scale / self.parameter_dict['julia_x_scale']
+        old_shift_x = float((center[0] - self.parameter_dict['julia_center'][0]) / Decimal(scale))
+        old_shift_y = float((center[1] - self.parameter_dict['julia_center'][1]) / Decimal(scale))
+        self.parameter_dict['julia_rel_old_shift'] = (self.parameter_dict['julia_rel_old_shift'][0] + old_shift_x,
+                                                      self.parameter_dict['julia_rel_old_shift'][1] + old_shift_y)
         self.parameter_dict['julia_center'] = center
         self.parameter_dict['julia_x_scale'] = scale
         self.reinit_julia_buffers()
@@ -251,10 +266,14 @@ class ShaderIterator():
         self.mandelbrot_c_buffer = self.context.buffer(reserve=4 * self.size[0] * self.size[1] * (self.num_prec_ints + 1) * 2)
         self.mandelbrot_z_buffer = self.context.buffer(reserve=4 * self.size[0] * self.size[1] * (self.num_prec_ints + 1) * 2)
         self.mandelbrot_iter_buffer = self.context.buffer(reserve=4 * self.size[0] * self.size[1])
+        self.mandelbrot_old_iter_tex = self.context.texture(self.size, 2, dtype='f4', data=-np.ones(self.size[0] * self.size[1] * 2, dtype=np.float32))
+        self.mandelbrot_old_iter_tex2 = self.context.texture(self.size, 2, dtype='f4', data=-np.ones(self.size[0] * self.size[1] * 2, dtype=np.float32))
 
         self.julia_c_buffer = self.context.buffer(reserve=4 * (self.num_prec_ints + 1) * 2)
         self.julia_z_buffer = self.context.buffer(reserve=4 * self.size[0] * self.size[1] * (self.num_prec_ints + 1) * 2)
         self.julia_iter_buffer = self.context.buffer(reserve=4 * self.size[0] * self.size[1])
+        self.julia_old_iter_tex = self.context.texture(self.size, 2, dtype='f4', data=-np.ones(self.size[0] * self.size[1] * 2, dtype=np.float32))
+        self.julia_old_iter_tex2 = self.context.texture(self.size, 2, dtype='f4', data=-np.ones(self.size[0] * self.size[1] * 2, dtype=np.float32))
         self.reinit_mandelbrot_buffers()
         self.reinit_julia_buffers()
 
@@ -328,10 +347,19 @@ class ShaderIterator():
         self.mandelbrot_iter_buffer.bind_to_storage_buffer(0)
         self.blue_color_scheme.use(1)
         self.mandelbrot_output_tex.bind_to_image(2)
+        self.mandelbrot_old_iter_tex.use(3)
+        self.mandelbrot_old_iter_tex2.bind_to_image(4)
+
+        self.program_coloring['old_iter_shift'] = self.parameter_dict['mandelbrot_rel_old_shift']
+        self.program_coloring['old_iter_scale'] = self.parameter_dict['mandelbrot_rel_old_scale']
+        self.parameter_dict['mandelbrot_rel_old_shift'] = (0.0, 0.0)
+        self.parameter_dict['mandelbrot_rel_old_scale'] = 1.0
 
         self.program_coloring['max_iter'] = self.parameter_dict['mandelbrot_cur_max_iter']
         self.program_coloring.run(group_x=self.num_groups[0], group_y=self.num_groups[1])
         self.context.finish()
+
+        self.mandelbrot_old_iter_tex, self.mandelbrot_old_iter_tex2 = self.mandelbrot_old_iter_tex2, self.mandelbrot_old_iter_tex
 
 
     def iterate_julia(self):
@@ -349,10 +377,20 @@ class ShaderIterator():
         self.julia_iter_buffer.bind_to_storage_buffer(0)
         self.blue_color_scheme.use(1)
         self.julia_output_tex.bind_to_image(2)
+        self.julia_old_iter_tex.use(3)
+        self.julia_old_iter_tex2.bind_to_image(4)
+
+        print(self.parameter_dict['julia_rel_old_shift'], self.parameter_dict['julia_rel_old_scale'])
+        self.program_coloring['old_iter_shift'] = self.parameter_dict['julia_rel_old_shift']
+        self.program_coloring['old_iter_scale'] = self.parameter_dict['julia_rel_old_scale']
+        self.parameter_dict['julia_rel_old_shift'] = (0.0, 0.0)
+        self.parameter_dict['julia_rel_old_scale'] = 1.0
 
         self.program_coloring['max_iter'] = self.parameter_dict['julia_cur_max_iter']
         self.program_coloring.run(group_x=self.num_groups[0], group_y=self.num_groups[1])
         self.context.finish()
+
+        self.julia_old_iter_tex, self.julia_old_iter_tex2 = self.julia_old_iter_tex2, self.julia_old_iter_tex
 
 
     def draw_mandelbrot(self):

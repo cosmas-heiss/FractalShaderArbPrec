@@ -136,7 +136,7 @@ void do_iteration(inout float iter, inout bool z_real_sign, inout uint[n_ints] z
         cur_rad_sq = float(z_real_sq_num[0]) + float(z_real_sq_num[1]) * 0.00001525878 + float(z_imag_sq_num[0]) + float(z_imag_sq_num[1]) * 0.00001525878;
         if (cur_rad_sq > 250.0) {
             if (i > 0) {
-                iter += 1.0 - 1.44 * log(log(cur_rad_sq) / log(250.0)); //3.32192809489 = 1 / log(2) // 1.44 found empirically...
+                iter += 1.0 - 1.44 * log(log(cur_rad_sq) * 0.41702461128); //0.41702461128 = 1 / log(250) // 1.44 found empirically...
             }
             break;
         }
