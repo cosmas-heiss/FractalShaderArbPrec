@@ -339,7 +339,7 @@ class ShaderIterator():
 
         self.program_mandelbrot.run(group_x=self.num_groups[0], group_y=self.num_groups[1])
         self.context.finish()
-
+        
         self.parameter_dict['mandelbrot_cur_max_iter'] += self.iter_steps
 
 
@@ -369,7 +369,7 @@ class ShaderIterator():
 
         self.program_julia.run(group_x=self.num_groups[0], group_y=self.num_groups[1])
         self.context.finish()
-
+        
         self.parameter_dict['julia_cur_max_iter'] += self.iter_steps
 
 
@@ -380,7 +380,6 @@ class ShaderIterator():
         self.julia_old_iter_tex.use(3)
         self.julia_old_iter_tex2.bind_to_image(4)
 
-        print(self.parameter_dict['julia_rel_old_shift'], self.parameter_dict['julia_rel_old_scale'])
         self.program_coloring['old_iter_shift'] = self.parameter_dict['julia_rel_old_shift']
         self.program_coloring['old_iter_scale'] = self.parameter_dict['julia_rel_old_scale']
         self.parameter_dict['julia_rel_old_shift'] = (0.0, 0.0)
@@ -394,12 +393,22 @@ class ShaderIterator():
 
 
     def draw_mandelbrot(self):
-        self.iterate_mandelbrot()
+        if self.parameter_dict['mandelbrot_rel_old_shift'] == (0.0, 0.0) and self.parameter_dict['mandelbrot_rel_old_scale'] == 1.0:
+            self.iterate_mandelbrot()
+        else:
+            self.mandelbrot_iter_buffer.write(3.0*np.ones(self.size[0] * self.size[1], dtype=np.float32))
+            self.parameter_dict['mandelbrot_cur_max_iter'] = -1.0
         self.color_mandelbrot()
 
 
     def draw_julia(self):
-        self.iterate_julia()
+        if (self.parameter_dict['julia_rel_old_shift'] == (0.0, 0.0) and \
+        self.parameter_dict['julia_rel_old_scale'] == 1.0) or \
+        self.parameter_dict['julia_rel_old_shift'] == (10000.0, 10000.0):
+            self.iterate_julia()
+        else:
+            self.julia_iter_buffer.write(3.0*np.ones(self.size[0] * self.size[1], dtype=np.float32))
+            self.parameter_dict['julia_cur_max_iter'] = -1.0
         self.color_julia()
 
 
